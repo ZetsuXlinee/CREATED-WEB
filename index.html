@@ -1,136 +1,92 @@
-<!DOCTYPE html>
-<html lang="id">
+<!doctype html>
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zetsu Deployment</title>
     <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
 </head>
 <body>
 
-    <!-- ======= SPLASH SCREEN ======= -->
-    <div id="splashScreen">
-        <div class="splash-content">
-            <div class="splash-icon">⚡</div>
-            <h1 class="splash-title">Zetsu</h1>
-            <p class="splash-sub">Deployment</p>
-            <div class="splash-loader">
-                <div class="loader-bar"></div>
-            </div>
-            <p class="splash-credit">by KizzuRyuichi</p>
+    <!-- ===== VIGNETTE ===== -->
+    <div id="vignette"></div>
+
+    <!-- ===== OVERLAY ===== -->
+    <div id="overlay">
+        <div class="header">
+            <div class="title" id="main-title">Zetsu Deployment</div>
+            <div class="status-pill" id="status-text">⚡ Singularity Engine</div>
         </div>
-    </div>
-
-    <!-- ======= NAVBAR ======= -->
-    <nav class="navbar">
-        <div class="container">
-            <span class="logo">⚡ Zetsu Deployment</span>
-            <div class="nav-links">
-                <a href="#" onclick="showTab('create')" class="active">Create</a>
-                <a href="#" onclick="showTab('dashboard')">Dashboard</a>
-                <a href="#" onclick="showTab('docs')">Docs</a>
+        <div class="hud-bottom">
+            <div>
+                <div class="metric">MASS_INDEX: <span class="val">4.2M SOL</span></div>
+                <div class="metric">LENSING: <span class="val" id="lensing-val">SCHWARZSCHILD</span></div>
             </div>
-        </div>
-    </nav>
-
-    <!-- ======= MAIN CONTENT ======= -->
-    <div class="container main-content">
-
-        <!-- ===== TAB: CREATE ===== -->
-        <div id="tab-create" class="tab-content active">
-            <div class="card glass">
-                <div class="card-glow"></div>
-                <h2>🚀 Deploy Website</h2>
-                <p class="subtitle">Upload file HTML dan dapatkan link publik dalam hitungan detik.</p>
-
-                <form id="createForm">
-                    <div class="form-group">
-                        <label for="webName">Nama Website <span class="required">*</span></label>
-                        <div class="input-group">
-                            <input type="text" id="webName" placeholder="nama-website" required />
-                            <span class="domain-suffix">.vercel.app</span>
-                        </div>
-                        <small class="helper">Hanya huruf kecil, angka, dan strip (-). Minimal 3 karakter.</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="fileInput">File HTML <span class="required">*</span></label>
-                        <div class="file-drop-zone" id="fileDropZone">
-                            <div class="file-icon">📄</div>
-                            <p>Seret & jatuhkan file HTML di sini, atau <span class="browse-link">telusuri</span></p>
-                            <input type="file" id="fileInput" accept=".html,.htm" hidden />
-                            <div id="fileInfo" style="display:none;">
-                                <span id="fileName"></span>
-                                <button type="button" onclick="clearFile()" class="remove-btn">✕</button>
-                            </div>
-                        </div>
-                        <small class="helper">Maksimal 5MB.</small>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" id="deployBtn" class="btn-primary">
-                            <span id="btnText">🚀 Deploy Sekarang</span>
-                            <span id="btnSpinner" style="display:none;">⏳</span>
-                        </button>
-                        <button type="reset" class="btn-secondary" onclick="clearForm()">Reset</button>
-                    </div>
-                </form>
-
-                <!-- ===== RESPONSE ===== -->
-                <div id="responseContainer" style="display:none;">
-                    <div id="responseContent"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: DASHBOARD ===== -->
-        <div id="tab-dashboard" class="tab-content">
-            <div class="card glass">
-                <div class="card-glow"></div>
-                <h2>📊 Dashboard</h2>
-                <p>Website yang sudah kamu buat akan muncul di sini.</p>
-                <div id="dashboardList">
-                    <div class="empty-state">Belum ada website. <a href="#" onclick="showTab('create')">Buat sekarang!</a></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== TAB: DOCS ===== -->
-        <div id="tab-docs" class="tab-content">
-            <div class="card glass">
-                <div class="card-glow"></div>
-                <h2>📖 Dokumentasi</h2>
-                <ol>
-                    <li>Upload file HTML (halaman utama harus <code>index.html</code>).</li>
-                    <li>Masukkan nama domain unik.</li>
-                    <li>Klik <strong>Deploy</strong> dan tunggu 5-10 detik.</li>
-                    <li>Website akan live di <code>https://[nama].vercel.app</code></li>
-                </ol>
-                <p><strong>Catatan:</strong> Setiap deploy menghabiskan 1 kuota dari 100 deploy/bulan (Vercel free tier).</p>
+            <div style="text-align:right;">
+                <div class="metric">RELATIVITY: <span class="val" id="vel-val">0.45c</span></div>
+                <div class="metric">RADIATION: <span class="val">DETECTION ON</span></div>
             </div>
         </div>
     </div>
 
-    <!-- ======= FOOTER ======= -->
-    <footer>
-        <div class="container">
-            <p>⚡ Zetsu Deployment — Deploy website instantly via Vercel @KizzuRyuichi</p>
-        </div>
-    </footer>
+    <!-- ===== DEPLOY PANEL ===== -->
+    <div id="deployPanel">
+        <h2>🚀 Deploy Website</h2>
+        <p class="subtitle">Upload HTML & dapatkan link publik instan</p>
 
-    <script src="script.js"></script>
-    <script>
-        // ===== SPLASH SCREEN =====
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                document.getElementById('splashScreen').classList.add('fade-out');
-                setTimeout(function() {
-                    document.getElementById('splashScreen').style.display = 'none';
-                }, 800);
-            }, 2500);
-        });
+        <form id="createForm">
+            <div class="form-group">
+                <label for="webName">Nama Website <span class="required">*</span></label>
+                <div class="input-group">
+                    <input type="text" id="webName" placeholder="nama-website" required />
+                    <span class="domain-suffix">.vercel.app</span>
+                </div>
+                <small class="helper">Huruf kecil, angka, strip (-). Min 3 karakter.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="fileInput">File HTML <span class="required">*</span></label>
+                <div class="file-drop-zone" id="fileDropZone">
+                    <div class="file-icon">📄</div>
+                    <p>Seret & jatuhkan HTML di sini, atau <span class="browse-link">telusuri</span></p>
+                    <input type="file" id="fileInput" accept=".html,.htm" hidden />
+                    <div id="fileInfo" style="display:none;">
+                        <span id="fileName"></span>
+                        <button type="button" onclick="clearFile()" class="remove-btn">✕</button>
+                    </div>
+                </div>
+                <small class="helper">Maksimal 5MB.</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" id="deployBtn" class="btn-primary">
+                    <span id="btnText">⚡ Deploy Sekarang</span>
+                    <span id="btnSpinner" style="display:none;">⏳</span>
+                </button>
+                <button type="reset" class="btn-secondary" onclick="clearForm()">Reset</button>
+            </div>
+        </form>
+
+        <div id="responseContainer">
+            <div id="responseContent"></div>
+        </div>
+    </div>
+
+    <!-- ===== THREE.JS IMPORTS ===== -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+                "gsap": "https://unpkg.com/gsap@3.12.5/index.js"
+            }
+        }
     </script>
+
+    <!-- ===== SCRIPT UTAMA ===== -->
+    <script type="module" src="script.js"></script>
+
 </body>
 </html>

@@ -24,7 +24,7 @@ export default async function handler(req, res) {
         }
 
         // ===== HARCODE TOKEN DI SINI =====
-        const VERCEL_TOKEN = "vcp_1yNpEqdOxG0AamTua3zjEdrkz27cZE93BOYT0lw06t5iFUra6b3rYHcJ"; // ← GANTI DENGAN TOKEN BARU!
+        const VERCEL_TOKEN = "vcp_5zxncIXrWoafpx4S0jiXZiTx7kr7sKUJbgyB2NOckPnvjiNiPR3wd3IO"; // ← GANTI DENGAN TOKEN BARU!
 
         // ===== HAPUS ATAU KOMENTAR BAGIAN INI =====
         // if (!VERCEL_TOKEN) {

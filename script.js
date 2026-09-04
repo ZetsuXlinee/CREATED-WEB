@@ -1,5 +1,274 @@
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import gsap from "gsap";
+
 // =============================================
-// 1. ELEMEN REFS
+// THREE.JS SETUP
+// =============================================
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(60, 30, 60);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.6;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.03;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.4;
+
+// =============================================
+// NOISE SHADER CHUNK
+// =============================================
+const noiseChunk = `
+    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+    vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+    vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+    float snoise(vec3 v) {
+        const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+        const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+        vec3 i  = floor(v + dot(v, C.yyy) );
+        vec3 x0 = v - i + dot(i, C.xxx) ;
+        vec3 g = step(x0.yzx, x0.xyz);
+        vec3 l = 1.0 - g;
+        vec3 i1 = min( g.xyz, l.zxy );
+        vec3 i2 = max( g.xyz, l.zxy );
+        vec3 x1 = x0 - i1 + C.xxx;
+        vec3 x2 = x0 - i2 + C.yyy;
+        vec3 x3 = x0 - D.yyy;
+        i = mod289(i);
+        vec4 p = permute( permute( permute( i.z + vec4(0.0, i1.z, i2.z, 1.0 )) + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+        float n_ = 0.142857142857;
+        vec3  ns = n_ * D.wyz - D.xzx;
+        vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+        vec4 x_ = floor(j * ns.z);
+        vec4 y_ = floor(j - 7.0 * x_ );
+        vec4 x = x_ *ns.x + ns.yyyy;
+        vec4 y = y_ *ns.x + ns.yyyy;
+        vec4 h = 1.0 - abs(x) - abs(y);
+        vec4 b0 = vec4( x.xy, y.xy );
+        vec4 b1 = vec4( x.zw, y.zw );
+        vec4 s0 = floor(b0)*2.0 + 1.0;
+        vec4 s1 = floor(b1)*2.0 + 1.0;
+        vec4 sh = -step(h, vec4(0.0));
+        vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+        vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+        vec3 p0 = vec3(a0.xy,h.x);
+        vec3 p1 = vec3(a0.zw,h.y);
+        vec3 p2 = vec3(a1.xy,h.z);
+        vec3 p3 = vec3(a1.zw,h.w);
+        vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+        p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+        vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+        m = m * m;
+        return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+    }
+`;
+
+// =============================================
+// BLACK HOLE CORE
+// =============================================
+const coreGroup = new THREE.Group();
+scene.add(coreGroup);
+
+const bhMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const bhGeo = new THREE.SphereGeometry(4, 64, 64);
+coreGroup.add(new THREE.Mesh(bhGeo, bhMat));
+
+const auraMat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uIntensity: { value: 1.0 } },
+    vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vView = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform float uIntensity;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+            float rim = pow(1.0 - max(dot(vNormal, vView), 0.0), 4.0);
+            gl_FragColor = vec4(vec3(1.0, 0.45, 0.1) * rim * uIntensity * 5.0, 1.0);
+        }
+    `,
+    side: THREE.BackSide,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+});
+coreGroup.add(new THREE.Mesh(new THREE.SphereGeometry(4.25, 64, 64), auraMat));
+
+// =============================================
+// ACCRETION DISK (Instanced)
+// =============================================
+const instanceCount = 5000;
+const streakGeo = new THREE.CylinderGeometry(0.01, 0.12, 2.2, 3);
+streakGeo.rotateX(Math.PI / 2);
+
+const diskMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+        uTime: { value: 0 },
+        uMorph: { value: 0.1 },
+        uCompression: { value: 1.0 },
+        uIntensity: { value: 1.0 },
+        uOrbitScale: { value: 1.0 },
+    },
+    vertexShader: `
+        ${noiseChunk}
+        uniform float uTime;
+        uniform float uMorph;
+        uniform float uCompression;
+        uniform float uIntensity;
+        uniform float uOrbitScale;
+        varying vec3 vColor;
+        varying float vOpacity;
+        void main() {
+            vec4 instPos = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+            float rOriginal = length(instPos.xz);
+            float r = rOriginal * uCompression;
+            float initialAngle = atan(instPos.z, instPos.x);
+            float orbitalVelocity = (1.5 / sqrt(rOriginal)) * uOrbitScale;
+            float currentAngle = initialAngle + (uTime * orbitalVelocity);
+            vec3 morphedWorldPos = vec3(cos(currentAngle) * r, instPos.y, sin(currentAngle) * r);
+            float noise = snoise(vec3(morphedWorldPos.x * 0.08, morphedWorldPos.z * 0.08, uTime * 0.3));
+            morphedWorldPos.y += noise * uMorph * 4.0;
+            vec3 viewDir = normalize(cameraPosition - morphedWorldPos);
+            vec3 orbitDir = normalize(vec3(-sin(currentAngle), 0.0, cos(currentAngle)));
+            float doppler = dot(orbitDir, viewDir);
+            vec3 hot = vec3(1.0, 0.95, 0.9);
+            vec3 warm = vec3(1.0, 0.45, 0.1);
+            vec3 cool = vec3(0.1, 0.35, 1.0);
+            vec3 color = mix(cool, warm, smoothstep(45.0, 12.0, r));
+            color = mix(color, hot, smoothstep(10.0, 4.0, r));
+            vColor = color * (1.3 + doppler * 0.7) * uIntensity;
+            vOpacity = (smoothstep(3.8, 5.5, r) * (1.0 - smoothstep(38.0, 48.0, r))) * 0.8;
+            float deltaAngle = currentAngle - initialAngle;
+            float c = cos(deltaAngle);
+            float s = sin(deltaAngle);
+            mat3 rotY = mat3(
+                c, 0, s,
+                0, 1, 0,
+               -s, 0, c
+            );
+            vec3 localPos = (instanceMatrix * vec4(position, 0.0)).xyz;
+            vec3 rotatedLocalPos = rotY * localPos;
+            gl_Position = projectionMatrix * viewMatrix * vec4(morphedWorldPos + rotatedLocalPos, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying vec3 vColor;
+        varying float vOpacity;
+        void main() {
+            gl_FragColor = vec4(vColor, vOpacity);
+        }
+    `,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+});
+
+const instancedDisk = new THREE.InstancedMesh(streakGeo, diskMaterial, instanceCount);
+const dummy = new THREE.Object3D();
+
+for (let i = 0; i < instanceCount; i++) {
+    const r = 5 + Math.pow(Math.random(), 1.3) * 40;
+    const angle = Math.random() * Math.PI * 2;
+    dummy.position.set(
+        Math.cos(angle) * r,
+        (Math.random() - 0.5) * (8 / r),
+        Math.sin(angle) * r,
+    );
+    dummy.lookAt(
+        dummy.position.x + Math.sin(angle),
+        dummy.position.y,
+        dummy.position.z - Math.cos(angle),
+    );
+    dummy.updateMatrix();
+    instancedDisk.setMatrixAt(i, dummy.matrix);
+}
+scene.add(instancedDisk);
+
+// =============================================
+// STATE TRANSITIONS (GSAP)
+// =============================================
+const config = [
+    { title: "Stable Singularity", status: "Topology: Nominal", morph: 0.1, compress: 1.0, intensity: 1.0, rotate: 0.4, camY: 25, camDist: 85, orbit: 1.0, color: "#00f3ff", vel: "0.45c" },
+    { title: "Accretion Turbulence", status: "Topology: Fluctuating", morph: 4.5, compress: 1.15, intensity: 1.4, rotate: 1.5, camY: 45, camDist: 95, orbit: 1.8, color: "#ffaa00", vel: "0.78c" },
+    { title: "Relativistic Collapse", status: "Topology: Critical", morph: 0.8, compress: 0.38, intensity: 3.5, rotate: 5.0, camY: 12, camDist: 55, orbit: 4.5, color: "#ff0044", vel: "0.99c" },
+];
+
+let stateIdx = 0;
+const mainTitle = document.getElementById("main-title");
+const statusText = document.getElementById("status-text");
+const velVal = document.getElementById("vel-val");
+const camControl = { distance: 85 };
+
+function transition() {
+    stateIdx = (stateIdx + 1) % config.length;
+    const s = config[stateIdx];
+    const tl = gsap.timeline({ defaults: { duration: 4.0, ease: "power2.inOut" } });
+    tl.to(diskMaterial.uniforms.uMorph, { value: s.morph }, 0);
+    tl.to(diskMaterial.uniforms.uCompression, { value: s.compress }, 0);
+    tl.to(diskMaterial.uniforms.uIntensity, { value: s.intensity }, 0);
+    tl.to(diskMaterial.uniforms.uOrbitScale, { value: s.orbit }, 0);
+    tl.to(auraMat.uniforms.uIntensity, { value: s.intensity }, 0);
+    tl.to(controls, { autoRotateSpeed: s.rotate }, 0);
+    tl.to(camera.position, { y: s.camY }, 0);
+    tl.to(camControl, { distance: s.camDist }, 0);
+    gsap.to([mainTitle, statusText, ".val"], {
+        opacity: 0,
+        duration: 0.8,
+        onComplete: () => {
+            mainTitle.innerText = s.title;
+            statusText.innerText = s.status;
+            statusText.style.color = s.color;
+            statusText.style.borderColor = s.color;
+            velVal.innerText = s.vel;
+            velVal.style.color = s.color;
+            gsap.to([mainTitle, statusText, ".val"], { opacity: 1, duration: 1.2 });
+        },
+    });
+}
+
+setInterval(transition, 10000);
+
+// =============================================
+// ANIMATION LOOP
+// =============================================
+const clock = new THREE.Clock();
+
+function animate() {
+    const time = clock.getElapsedTime();
+    diskMaterial.uniforms.uTime.value = time;
+    auraMat.uniforms.uTime.value = time;
+    instancedDisk.rotation.y += 0.0005;
+    const currentDir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+    camera.position.x = controls.target.x + currentDir.x * camControl.distance;
+    camera.position.z = controls.target.z + currentDir.z * camControl.distance;
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+}
+
+window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+
+// =============================================
+// DEPLOY LOGIC (Vanilla JS)
 // =============================================
 const form = document.getElementById('createForm');
 const webNameInput = document.getElementById('webName');
@@ -13,23 +282,7 @@ const btnSpinner = document.getElementById('btnSpinner');
 const responseContainer = document.getElementById('responseContainer');
 const responseContent = document.getElementById('responseContent');
 
-// =============================================
-// 2. TAB NAVIGATION
-// =============================================
-function showTab(tab) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.getElementById(`tab-${tab}`).classList.add('active');
-    document.querySelectorAll('.nav-links a').forEach(el => el.classList.remove('active'));
-    // highlight aktif
-    document.querySelectorAll('.nav-links a').forEach(el => {
-        if (el.textContent.toLowerCase() === tab) el.classList.add('active');
-    });
-    if (tab === 'dashboard') loadDashboard();
-}
-
-// =============================================
-// 3. FILE HANDLING (Drag & Drop + Click)
-// =============================================
+// ===== FILE HANDLING =====
 fileDropZone.addEventListener('click', () => fileInput.click());
 
 fileDropZone.addEventListener('dragover', (e) => {
@@ -44,9 +297,8 @@ fileDropZone.addEventListener('dragleave', () => {
 fileDropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     fileDropZone.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        handleFile(files[0]);
+    if (e.dataTransfer.files.length > 0) {
+        handleFile(e.dataTransfer.files[0]);
     }
 });
 
@@ -59,16 +311,15 @@ fileInput.addEventListener('change', (e) => {
 function handleFile(file) {
     const ext = file.name.split('.').pop().toLowerCase();
     if (!['html', 'htm'].includes(ext)) {
-        alert('❌ File harus berformat HTML (.html atau .htm)');
+        alert('❌ File harus HTML (.html atau .htm)');
         return;
     }
     if (file.size > 5 * 1024 * 1024) {
-        alert('❌ File maksimal 5MB.');
+        alert('❌ Maksimal 5MB.');
         return;
     }
     fileNameDisplay.textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     fileInfo.style.display = 'flex';
-    // simpan file di dataTransfer
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
     fileInput.files = dataTransfer.files;
@@ -80,6 +331,8 @@ function clearFile() {
     fileNameDisplay.textContent = '';
 }
 
+window.clearFile = clearFile;
+
 function clearForm() {
     clearFile();
     webNameInput.value = '';
@@ -87,132 +340,68 @@ function clearForm() {
     responseContent.innerHTML = '';
 }
 
-// =============================================
-// 4. SUBMIT FORM (Deploy ke Vercel)
-// =============================================
+window.clearForm = clearForm;
+
+// ===== SUBMIT =====
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const webName = webNameInput.value.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '');
     if (webName.length < 3) {
-        alert('❌ Nama website minimal 3 karakter.');
+        alert('❌ Nama minimal 3 karakter.');
         return;
     }
 
     const file = fileInput.files[0];
     if (!file) {
-        alert('❌ Silakan upload file HTML.');
+        alert('❌ Upload file HTML.');
         return;
     }
 
-    // Baca file HTML
     const htmlContent = await file.text();
 
-    // Disable tombol
     deployBtn.disabled = true;
     btnText.textContent = 'Mendeploy...';
     btnSpinner.style.display = 'inline';
-
-    // Sembunyikan response lama
     responseContainer.style.display = 'none';
 
     try {
         const res = await fetch('/api/deploy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                webName: webName,
-                htmlContent: htmlContent
-            })
+            body: JSON.stringify({ webName, htmlContent })
         });
 
         const data = await res.json();
 
         if (res.ok && data.success) {
-            showResponse('success', `
-                ✅ <strong>Website berhasil dibuat!</strong><br><br>
-                🌐 <strong>URL:</strong> <a href="${data.url}" target="_blank" class="url-link">${data.url}</a><br>
-                🔗 <strong>Preview:</strong> <a href="${data.preview}" target="_blank" class="url-link">${data.preview}</a><br>
-                📅 <strong>Deploy ID:</strong> ${data.deployId || 'N/A'}<br><br>
-                <small>Website akan aktif dalam beberapa detik.</small>
-            `);
-            // Tambah ke dashboard
+            responseContainer.className = 'success';
+            responseContent.innerHTML = `
+                ✅ <strong>Berhasil!</strong><br><br>
+                🌐 <a href="${data.url}" target="_blank" class="url-link">${data.url}</a><br>
+                🔗 Preview: <a href="${data.preview}" target="_blank" class="url-link">${data.preview}</a>
+            `;
+            responseContainer.style.display = 'block';
             saveToDashboard(webName, data.url);
         } else {
-            showResponse('error', `❌ Gagal deploy: ${data.message || 'Unknown error'}`);
+            responseContainer.className = 'error';
+            responseContent.innerHTML = `❌ Gagal: ${data.message || 'Unknown error'}`;
+            responseContainer.style.display = 'block';
         }
     } catch (err) {
-        showResponse('error', `❌ Terjadi kesalahan: ${err.message}`);
+        responseContainer.className = 'error';
+        responseContent.innerHTML = `❌ Error: ${err.message}`;
+        responseContainer.style.display = 'block';
     } finally {
         deployBtn.disabled = false;
-        btnText.textContent = '🚀 Deploy Sekarang';
+        btnText.textContent = '⚡ Deploy Sekarang';
         btnSpinner.style.display = 'none';
     }
 });
 
-// =============================================
-// 5. RESPONSE DISPLAY
-// =============================================
-function showResponse(type, html) {
-    responseContainer.style.display = 'block';
-    responseContainer.className = type; // 'success' or 'error'
-    responseContent.innerHTML = html;
-}
-
-// =============================================
-// 6. DASHBOARD (LocalStorage)
-// =============================================
+// ===== DASHBOARD (LocalStorage) =====
 function saveToDashboard(name, url) {
     const sites = JSON.parse(localStorage.getItem('deployedSites') || '[]');
     sites.unshift({ name, url, date: new Date().toISOString() });
     localStorage.setItem('deployedSites', JSON.stringify(sites));
 }
-
-function loadDashboard() {
-    const container = document.getElementById('dashboardList');
-    const sites = JSON.parse(localStorage.getItem('deployedSites') || '[]');
-
-    if (sites.length === 0) {
-        container.innerHTML = `<div class="empty-state">Belum ada website. <a href="#" onclick="showTab('create')">Buat sekarang!</a></div>`;
-        return;
-    }
-
-    let html = `<div style="display:grid;gap:12px;margin-top:16px;">`;
-    sites.forEach(site => {
-        html += `
-            <div style="background:#0d1117;padding:12px 16px;border-radius:8px;border:1px solid #30363d;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-                <div>
-                    <strong>${site.name}</strong>
-                    <small style="display:block;color:#8b949e;font-size:0.8rem;">${new Date(site.date).toLocaleDateString()}</small>
-                </div>
-                <a href="${site.url}" target="_blank" style="color:#f7971e;text-decoration:none;">🔗 Buka</a>
-            </div>
-        `;
-    });
-    html += `</div>`;
-    container.innerHTML = html;
-}
-
-// =============================================
-// 7. INIT
-// =============================================
-// Load dashboard if tab aktif
-if (document.getElementById('tab-dashboard').classList.contains('active')) {
-    loadDashboard();
-}
-
-// =============================================
-// 8. PASTE DARI CLIPBOARD (Opsional)
-// =============================================
-// Kalau user paste HTML dari clipboard, kita bisa deteksi
-document.addEventListener('paste', (e) => {
-    const items = e.clipboardData.items;
-    for (let item of items) {
-        if (item.type === 'text/html') {
-            item.getAsString((html) => {
-                // Bisa ditampilkan atau di-upload otomatis
-                // console.log('HTML dari clipboard:', html);
-            });
-        }
-    }
-});

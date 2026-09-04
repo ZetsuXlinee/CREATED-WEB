@@ -3,16 +3,30 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Create Website - Hosting Platform</title>
+    <title>Zetsu Deployment</title>
     <link rel="stylesheet" href="style.css" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
 </head>
 <body>
+
+    <!-- ======= SPLASH SCREEN ======= -->
+    <div id="splashScreen">
+        <div class="splash-content">
+            <div class="splash-icon">⚡</div>
+            <h1 class="splash-title">Zetsu</h1>
+            <p class="splash-sub">Deployment</p>
+            <div class="splash-loader">
+                <div class="loader-bar"></div>
+            </div>
+            <p class="splash-credit">by KizzuRyuichi</p>
+        </div>
+    </div>
 
     <!-- ======= NAVBAR ======= -->
     <nav class="navbar">
         <div class="container">
-            <span class="logo">🔥 CreateWeb</span>
+            <span class="logo">⚡ Zetsu Deployment</span>
             <div class="nav-links">
                 <a href="#" onclick="showTab('create')" class="active">Create</a>
                 <a href="#" onclick="showTab('dashboard')">Dashboard</a>
@@ -26,8 +40,9 @@
 
         <!-- ===== TAB: CREATE ===== -->
         <div id="tab-create" class="tab-content active">
-            <div class="card">
-                <h2>🚀 Buat Website Baru</h2>
+            <div class="card glass">
+                <div class="card-glow"></div>
+                <h2>🚀 Deploy Website</h2>
                 <p class="subtitle">Upload file HTML dan dapatkan link publik dalam hitungan detik.</p>
 
                 <form id="createForm">
@@ -72,7 +87,8 @@
 
         <!-- ===== TAB: DASHBOARD ===== -->
         <div id="tab-dashboard" class="tab-content">
-            <div class="card">
+            <div class="card glass">
+                <div class="card-glow"></div>
                 <h2>📊 Dashboard</h2>
                 <p>Website yang sudah kamu buat akan muncul di sini.</p>
                 <div id="dashboardList">
@@ -83,11 +99,12 @@
 
         <!-- ===== TAB: DOCS ===== -->
         <div id="tab-docs" class="tab-content">
-            <div class="card">
+            <div class="card glass">
+                <div class="card-glow"></div>
                 <h2>📖 Dokumentasi</h2>
                 <ol>
                     <li>Upload file HTML (halaman utama harus <code>index.html</code>).</li>
-                    <li>Request Name Domain</li>
+                    <li>Masukkan nama domain unik.</li>
                     <li>Klik <strong>Deploy</strong> dan tunggu 5-10 detik.</li>
                     <li>Website akan live di <code>https://[nama].vercel.app</code></li>
                 </ol>
@@ -99,10 +116,21 @@
     <!-- ======= FOOTER ======= -->
     <footer>
         <div class="container">
-            <p>🔥 CreateWeb — Deploy website instantly via Vercel @KizzuRyuichi</p>
+            <p>⚡ Zetsu Deployment — Deploy website instantly via Vercel @KizzuRyuichi</p>
         </div>
     </footer>
 
     <script src="script.js"></script>
+    <script>
+        // ===== SPLASH SCREEN =====
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('splashScreen').classList.add('fade-out');
+                setTimeout(function() {
+                    document.getElementById('splashScreen').style.display = 'none';
+                }, 800);
+            }, 2500);
+        });
+    </script>
 </body>
 </html>
